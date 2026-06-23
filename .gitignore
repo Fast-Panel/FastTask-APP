@@ -1,0 +1,20 @@
+# Rust build artifacts
+target/
+src-tauri/target/
+
+# Generated icons (regenerated depuis icon.svg via `npm run setup`)
+src-tauri/icons/*.png
+src-tauri/icons/*.ico
+src-tauri/icons/*.icns
+
+# Node.js
+node_modules/
+package-lock.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
