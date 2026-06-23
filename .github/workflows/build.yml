@@ -9,6 +9,7 @@ permissions:
   contents: write
 
 jobs:
+  # ── Desktop : Windows / macOS / Linux ──────────────────────────────────────
   build:
     strategy:
       fail-fast: false
@@ -71,8 +72,64 @@ jobs:
             | Windows | `.msi` (installeur) · `.exe` (portable) |
             | macOS | `.dmg` (Intel + Apple Silicon universel) |
             | Linux | `.AppImage` · `.deb` |
+            | Android | `.apk` |
 
             > **macOS** : L'app n'est pas signée par Apple. Au premier lancement : clic droit → Ouvrir.
+            > **Android** : Activer « Sources inconnues » pour installer l'APK.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
+
+  # ── Android ────────────────────────────────────────────────────────────────
+  build-android:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust stable + Android targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK 27
+        run: sdkmanager --install "ndk;27.0.12077973"
+
+      - name: Set NDK path
+        run: echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.0.12077973" >> $GITHUB_ENV
+
+      - name: Install npm dependencies and generate icons
+        run: |
+          npm install
+          npx tauri icon src-tauri/icons/icon.svg
+
+      - name: Init Android project
+        run: npx tauri android init
+
+      - name: Build Android APK
+        run: npx tauri android build --apk
+
+      - name: Upload APK to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          files: src-tauri/gen/android/app/build/outputs/apk/**/*.apk

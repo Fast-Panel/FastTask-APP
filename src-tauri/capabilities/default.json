@@ -3,5 +3,7 @@
   "identifier": "default",
   "description": "Default capability for FastTask",
   "windows": ["main"],
-  "permissions": []
+  "permissions": [
+    "notification:default"
+  ]
 }
