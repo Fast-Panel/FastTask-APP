@@ -6,6 +6,11 @@ src-tauri/target/
 src-tauri/icons/*.png
 src-tauri/icons/*.ico
 src-tauri/icons/*.icns
+src-tauri/icons/android/
+src-tauri/icons/ios/
+
+# Tauri mobile scaffolding (généré par `tauri android/ios init`)
+src-tauri/gen/
 
 # Node.js
 node_modules/
