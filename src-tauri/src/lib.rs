@@ -1,5 +1,5 @@
 use std::sync::{Arc, Mutex};
-use tauri::Manager;
+use tauri::{Emitter, Listener, Manager};
 
 #[cfg(desktop)]
 use tauri_plugin_updater::UpdaterExt;
