@@ -1,6 +1,6 @@
 {
   "name": "fasttask-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "FastTask — Application de bureau (Tauri)",
   "scripts": {
     "tauri": "tauri",
