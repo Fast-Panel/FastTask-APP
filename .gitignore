@@ -23,3 +23,7 @@ Thumbs.db
 # IDE
 .vscode/settings.json
 .idea/
+
+# Clés de signature Tauri (ne jamais committer)
+tauri-signing.key
+tauri-signing.key.pub
