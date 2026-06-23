@@ -51,10 +51,10 @@ jobs:
             librsvg2-dev \
             patchelf
 
-      - name: Generate icons from SVG
+      - name: Install npm dependencies and generate icons
         run: |
-          npm install -g @tauri-apps/cli@^2
-          tauri icon src-tauri/icons/icon.svg
+          npm install
+          npx tauri icon src-tauri/icons/icon.svg
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0

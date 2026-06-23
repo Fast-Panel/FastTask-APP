@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "FastTask — Application de bureau (Tauri)",
   "scripts": {
+    "tauri": "tauri",
     "setup": "tauri icon src-tauri/icons/icon.svg",
     "dev": "tauri dev",
     "build": "tauri build"
