@@ -132,8 +132,28 @@ jobs:
       - name: Build Android APK
         run: npx tauri android build --apk --target aarch64 armv7
 
+      - name: Sign APK
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          # build-tools (zipalign + apksigner) : on réutilise celui présent, sinon on l'installe
+          BT="$(ls -d $ANDROID_HOME/build-tools/*/ 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$BT" ]; then yes | sdkmanager "build-tools;34.0.0" >/dev/null 2>&1 || true; BT="$ANDROID_HOME/build-tools/34.0.0"; fi
+          BT="${BT%/}"; echo "Build-tools: $BT"
+          echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/fasttask.jks"
+          UNSIGNED="$(find src-tauri/gen/android -path '*release*' -name '*-unsigned.apk' | head -1)"
+          echo "Unsigned APK: $UNSIGNED"
+          "$BT/zipalign" -f -p 4 "$UNSIGNED" "$RUNNER_TEMP/aligned.apk"
+          OUT="$RUNNER_TEMP/FastTask_${GITHUB_REF_NAME}_android.apk"
+          "$BT/apksigner" sign --ks "$RUNNER_TEMP/fasttask.jks" --ks-pass env:KS_PASS --ks-key-alias "$KEY_ALIAS" --key-pass env:KEY_PASS --out "$OUT" "$RUNNER_TEMP/aligned.apk"
+          "$BT/apksigner" verify --print-certs "$OUT" | head -2
+          echo "SIGNED_APK=$OUT" >> "$GITHUB_ENV"
+
       - name: Upload APK to release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          files: src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          files: ${{ env.SIGNED_APK }}
