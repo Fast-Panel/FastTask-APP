@@ -1,6 +1,6 @@
 [package]
 name = "fasttask-app"
-version = "0.0.1"
+version = "1.0.12"
 description = "FastTask — Application de bureau"
 authors = ["Fast-Panel"]
 edition = "2021"
@@ -15,7 +15,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["tray-icon", "image-png"] }
+tauri = { version = "2", features = ["tray-icon", "image-png", "devtools"] }
 tauri-plugin-notification = "2"
 tauri-plugin-updater = "2"
 tokio = { version = "1", features = ["time"] }
@@ -24,6 +24,7 @@ serde_json = "1"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
+windows = { version = "0.61", features = ["Win32_UI_Shell"] }
 
 [profile.release]
 codegen-units = 1

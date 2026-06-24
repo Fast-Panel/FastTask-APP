@@ -1,20 +1,36 @@
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Listener, Manager};
 
-// Sur Windows, enregistre l'AUMID dans le registre pour que les Toast notifications fonctionnent.
-// L'installeur WiX ne le fait pas automatiquement — on le fait au démarrage.
+// AUMID (AppUserModelID) de l'app. DOIT rester identique à `identifier` dans
+// tauri.conf.json ET à la propriété System.AppUserModel.ID du raccourci Menu Démarrer
+// créé par l'installeur — sinon Windows ignore silencieusement les Toast notifications.
+#[cfg(target_os = "windows")]
+const APP_AUMID: &str = "fr.fastpanel.fasttask";
+
+// Associe explicitement le PROCESSUS courant à l'AUMID de l'app. Sans cela, le toast
+// peut être émis sous une autre identité (ex. PowerShell) ou avalé silencieusement par
+// le Centre de notifications. Méthode recommandée par Microsoft.
+#[cfg(target_os = "windows")]
+fn set_app_user_model_id() {
+    use windows::core::w;
+    use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
+    // w! exige un littéral ; il doit correspondre à APP_AUMID.
+    unsafe {
+        let _ = SetCurrentProcessExplicitAppUserModelID(w!("fr.fastpanel.fasttask"));
+    }
+}
+
+// Enregistre les métadonnées d'affichage de l'AUMID (nom affiché du toast) dans le
+// registre. Complète — sans le remplacer — le raccourci Menu Démarrer posé par l'installeur.
 #[cfg(target_os = "windows")]
 fn register_windows_toast_aumid() {
     use winreg::enums::HKEY_CURRENT_USER;
     use winreg::RegKey;
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     if let Ok((key, _)) =
-        hkcu.create_subkey("SOFTWARE\\Classes\\AppUserModelId\\fr.fastpanel.fasttask")
+        hkcu.create_subkey(format!("SOFTWARE\\Classes\\AppUserModelId\\{APP_AUMID}"))
     {
         let _ = key.set_value("DisplayName", &"FastTask");
-        if let Ok(exe) = std::env::current_exe() {
-            let _ = key.set_value("IconUri", &exe.to_string_lossy().as_ref());
-        }
     }
 }
 
@@ -27,7 +43,10 @@ type Pending = Arc<Mutex<Option<(tauri_plugin_updater::Update, Vec<u8>)>>>;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(target_os = "windows")]
-    register_windows_toast_aumid();
+    {
+        set_app_user_model_id();
+        register_windows_toast_aumid();
+    }
 
     #[allow(unused_mut)]
     let mut builder = tauri::Builder::default()
