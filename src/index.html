@@ -15,7 +15,15 @@
       color: white;
       font-family: system-ui, sans-serif;
     }
+    p { font-size: 1.1rem; opacity: 0.9; }
   </style>
+  <!-- Sur mobile (Android/iOS), Tauri charge ce fichier via frontendDist.
+       On redirige immédiatement vers l'app en production.
+       Sur desktop, la config app.windows[0].url prend le dessus — ce script
+       ne s'exécute jamais vraiment (le WebView desktop charge directement task.fastpanel.fr). -->
+  <script>
+    window.location.replace('https://task.fastpanel.fr');
+  </script>
 </head>
 <body>
   <p>Chargement de FastTask…</p>
