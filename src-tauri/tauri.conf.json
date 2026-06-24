@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "FastTask",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "identifier": "fr.fastpanel.fasttask",
   "build": {
     "frontendDist": "../src",
@@ -28,7 +28,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["nsis", "msi"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -40,8 +40,9 @@
     "shortDescription": "Gestionnaire de tâches FastTask",
     "longDescription": "Application de bureau pour FastTask — gestionnaire de projets et de tâches.",
     "windows": {
-      "wix": {
-        "language": "fr-FR"
+      "nsis": {
+        "language": ["French"],
+        "installMode": "currentUser"
       }
     }
   },
