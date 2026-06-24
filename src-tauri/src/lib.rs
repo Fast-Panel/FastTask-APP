@@ -1,6 +1,23 @@
 use std::sync::{Arc, Mutex};
 use tauri::{Emitter, Listener, Manager};
 
+// Sur Windows, enregistre l'AUMID dans le registre pour que les Toast notifications fonctionnent.
+// L'installeur WiX ne le fait pas automatiquement — on le fait au démarrage.
+#[cfg(target_os = "windows")]
+fn register_windows_toast_aumid() {
+    use winreg::enums::HKEY_CURRENT_USER;
+    use winreg::RegKey;
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    if let Ok((key, _)) =
+        hkcu.create_subkey("SOFTWARE\\Classes\\AppUserModelId\\fr.fastpanel.fasttask")
+    {
+        let _ = key.set_value("DisplayName", &"FastTask");
+        if let Ok(exe) = std::env::current_exe() {
+            let _ = key.set_value("IconUri", &exe.to_string_lossy().as_ref());
+        }
+    }
+}
+
 #[cfg(desktop)]
 use tauri_plugin_updater::UpdaterExt;
 
@@ -9,6 +26,9 @@ type Pending = Arc<Mutex<Option<(tauri_plugin_updater::Update, Vec<u8>)>>>;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    #[cfg(target_os = "windows")]
+    register_windows_toast_aumid();
+
     #[allow(unused_mut)]
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
