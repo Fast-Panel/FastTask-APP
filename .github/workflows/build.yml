@@ -97,7 +97,9 @@ jobs:
       - name: Install Rust stable + Android targets
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+          # Seulement les ABIs des vrais appareils (arm64 + armv7). On retire
+          # i686/x86_64 (émulateurs) : ~2x plus rapide à compiler + APK plus légère.
+          targets: aarch64-linux-android,armv7-linux-androideabi
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -109,6 +111,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
+          cache: gradle
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -128,7 +131,7 @@ jobs:
         run: npx tauri android init
 
       - name: Build Android APK
-        run: npx tauri android build --apk
+        run: npx tauri android build --apk --target aarch64 armv7
 
       - name: Upload APK to release
         uses: softprops/action-gh-release@v2
