@@ -1,6 +1,6 @@
 [package]
 name = "fasttask-app"
-version = "1.0.22"
+version = "1.0.23"
 description = "FastTask — Application de bureau"
 authors = ["Fast-Panel"]
 edition = "2021"
@@ -39,3 +39,4 @@ strip = true
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "2"
+tauri-plugin-autostart = "2"
