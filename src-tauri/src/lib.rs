@@ -108,6 +108,22 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
+/// Vérifie immédiatement si une mise à jour est disponible et émet l'événement JS si oui.
+#[cfg(desktop)]
+async fn check_for_update(app: &tauri::AppHandle) {
+    if let Ok(updater) = app.updater() {
+        if let Ok(Some(update)) = updater.check().await {
+            let _ = app.emit(
+                "fasttask-update-available",
+                serde_json::json!({
+                    "version": update.version,
+                    "currentVersion": update.current_version,
+                }),
+            );
+        }
+    }
+}
+
 /// Vérifie les mises à jour et gère le cycle download → install via événements Tauri.
 #[cfg(desktop)]
 fn setup_updater(app: &mut tauri::App, pending: Pending) {
@@ -117,23 +133,23 @@ fn setup_updater(app: &mut tauri::App, pending: Pending) {
     {
         let app_check = app_handle.clone();
         tauri::async_runtime::spawn(async move {
-            // Délai initial pour laisser le webview charger
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
             loop {
-                if let Ok(updater) = app_check.updater() {
-                    if let Ok(Some(update)) = updater.check().await {
-                        let _ = app_check.emit(
-                            "fasttask-update-available",
-                            serde_json::json!({
-                                "version": update.version,
-                                "currentVersion": update.current_version,
-                            }),
-                        );
-                    }
-                }
-                // Re-vérifie toutes les heures tant que l'app tourne
+                check_for_update(&app_check).await;
                 tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
             }
+        });
+    }
+
+    // Déclenché en temps réel par le frontend JS quand Reverb reçoit un broadcast
+    // GitHub release → webhook Laravel → broadcast → JS → cet événement Tauri
+    {
+        let app_realtime = app_handle.clone();
+        app.listen("fasttask-trigger-update-check", move |_| {
+            let app_realtime = app_realtime.clone();
+            tauri::async_runtime::spawn(async move {
+                check_for_update(&app_realtime).await;
+            });
         });
     }
 
