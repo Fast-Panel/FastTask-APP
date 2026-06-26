@@ -61,6 +61,13 @@ pub fn run() {
         .setup(|app| {
             #[cfg(desktop)]
             setup_tray(app)?;
+            // Applique explicitement l'icône .ico sur la fenêtre principale (barre des tâches Windows)
+            #[cfg(target_os = "windows")]
+            if let Some(win) = app.get_webview_window("main") {
+                if let Ok(icon) = app.default_window_icon().cloned().ok_or(()) {
+                    let _ = win.set_icon(icon);
+                }
+            }
             #[cfg(desktop)]
             {
                 let pending: Pending = Arc::new(Mutex::new(None));
