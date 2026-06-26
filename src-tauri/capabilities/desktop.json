@@ -4,6 +4,9 @@
   "description": "Capabilities desktop uniquement (Windows, macOS, Linux)",
   "windows": ["main"],
   "platforms": ["linux", "windows", "macOS"],
+  "remote": {
+    "urls": ["https://task.fastpanel.fr/*"]
+  },
   "permissions": [
     "autostart:allow-enable",
     "autostart:allow-disable",
