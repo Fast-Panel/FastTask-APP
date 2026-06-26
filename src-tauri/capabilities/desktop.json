@@ -3,7 +3,7 @@
   "identifier": "desktop",
   "description": "Capabilities desktop uniquement (Windows, macOS, Linux)",
   "windows": ["main"],
-  "platforms": ["linux", "windows", "macos"],
+  "platforms": ["linux", "windows", "macOS"],
   "permissions": [
     "autostart:allow-enable",
     "autostart:allow-disable",
