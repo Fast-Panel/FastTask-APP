@@ -7,6 +7,17 @@ use tauri::{Emitter, Listener, Manager};
 #[cfg(target_os = "windows")]
 const APP_AUMID: &str = "fr.fastpanel.fasttask";
 
+// Notifie Windows Shell que les associations/icônes ont changé.
+// Équivalent à ce que font les installeurs signés automatiquement — force
+// le rafraîchissement du cache d'icônes sans redémarrage de l'explorateur.
+#[cfg(target_os = "windows")]
+fn refresh_shell_icons() {
+    use windows::Win32::UI::Shell::{SHChangeNotify, SHCNE_ASSOCCHANGED, SHCNF_IDLIST};
+    unsafe {
+        SHChangeNotify(SHCNE_ASSOCCHANGED, SHCNF_IDLIST, None, None);
+    }
+}
+
 // Associe explicitement le PROCESSUS courant à l'AUMID de l'app. Sans cela, le toast
 // peut être émis sous une autre identité (ex. PowerShell) ou avalé silencieusement par
 // le Centre de notifications. Méthode recommandée par Microsoft.
@@ -44,6 +55,7 @@ type Pending = Arc<Mutex<Option<(tauri_plugin_updater::Update, Vec<u8>)>>>;
 pub fn run() {
     #[cfg(target_os = "windows")]
     {
+        refresh_shell_icons();
         set_app_user_model_id();
         register_windows_toast_aumid();
     }
