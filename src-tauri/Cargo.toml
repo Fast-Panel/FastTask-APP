@@ -1,6 +1,6 @@
 [package]
 name = "fasttask-app"
-version = "1.0.20"
+version = "1.0.21"
 description = "FastTask — Application de bureau"
 authors = ["Fast-Panel"]
 edition = "2021"

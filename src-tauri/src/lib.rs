@@ -113,21 +113,26 @@ pub fn run() {
 fn setup_updater(app: &mut tauri::App, pending: Pending) {
     let app_handle = app.handle().clone();
 
-    // Vérifie les mises à jour au démarrage (délai pour laisser le webview charger)
+    // Vérifie les mises à jour au démarrage puis toutes les heures
     {
         let app_check = app_handle.clone();
         tauri::async_runtime::spawn(async move {
+            // Délai initial pour laisser le webview charger
             tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-            if let Ok(updater) = app_check.updater() {
-                if let Ok(Some(update)) = updater.check().await {
-                    let _ = app_check.emit(
-                        "fasttask-update-available",
-                        serde_json::json!({
-                            "version": update.version,
-                            "currentVersion": update.current_version,
-                        }),
-                    );
+            loop {
+                if let Ok(updater) = app_check.updater() {
+                    if let Ok(Some(update)) = updater.check().await {
+                        let _ = app_check.emit(
+                            "fasttask-update-available",
+                            serde_json::json!({
+                                "version": update.version,
+                                "currentVersion": update.current_version,
+                            }),
+                        );
+                    }
                 }
+                // Re-vérifie toutes les heures tant que l'app tourne
+                tokio::time::sleep(std::time::Duration::from_secs(3600)).await;
             }
         });
     }
