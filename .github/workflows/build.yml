@@ -13,6 +13,12 @@ jobs:
   build:
     strategy:
       fail-fast: false
+      # max-parallel: 1 → les 3 builds desktop tournent EN SÉQUENCE.
+      # Indispensable : chaque job fait lecture-modification-écriture de
+      # latest.json (manifeste updater) sur la release. En parallèle, les jobs
+      # s'écrasent mutuellement et une plateforme disparaît du manifeste
+      # (ex. windows-x86_64 absent → clients Windows ne peuvent pas se mettre à jour).
+      max-parallel: 1
       matrix:
         include:
           - platform: ubuntu-22.04
