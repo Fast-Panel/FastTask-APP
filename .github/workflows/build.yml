@@ -88,6 +88,55 @@ jobs:
           prerelease: false
           args: ${{ matrix.args }}
 
+  # ── Manifeste updater complet ───────────────────────────────────────────────
+  # tauri-action ÉCRASE latest.json à chaque job (ne fusionne pas) : le manifeste
+  # final ne contient que la dernière plateforme buildée. Ce job tourne APRÈS tous
+  # les builds desktop et reconstruit un latest.json complet à partir des .sig de
+  # CHAQUE plateforme présente dans la release, puis l'uploade (--clobber).
+  updater-manifest:
+    needs: build
+    if: always()
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Assemble complete latest.json
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+          VERSION="${TAG#v}"
+          BASE="https://github.com/$REPO/releases/download/$TAG"
+          mkdir -p sigs
+          # Récupère toutes les signatures uploadées par les jobs desktop
+          gh release download "$TAG" --repo "$REPO" --pattern '*.sig' --dir sigs --clobber || true
+          names=$(gh release view "$TAG" --repo "$REPO" --json assets -q '.assets[].name')
+          pick() { echo "$names" | grep -E "$1" | head -1; }
+          WIN=$(pick '_x64-setup\.exe$')      # NSIS = artefact updater Windows
+          MAC=$(pick '\.app\.tar\.gz$')        # bundle updater macOS (universel)
+          LIN=$(pick '_amd64\.AppImage$')      # artefact updater Linux
+
+          platforms='{}'
+          add() {
+            local key="$1" name="$2"
+            [ -z "$name" ] && return 0
+            [ ! -f "sigs/$name.sig" ] && return 0
+            local s; s=$(tr -d '\n' < "sigs/$name.sig")
+            platforms=$(echo "$platforms" | jq --arg k "$key" --arg s "$s" --arg u "$BASE/$name" \
+              '. + {($k): {signature:$s, url:$u}}')
+          }
+          add windows-x86_64 "$WIN"
+          add darwin-aarch64 "$MAC"
+          add darwin-x86_64  "$MAC"
+          add linux-x86_64   "$LIN"
+
+          jq -n --arg v "$VERSION" --arg d "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --argjson p "$platforms" \
+            '{version:$v, notes:"Nouvelle version de FastTask", pub_date:$d, platforms:$p}' > latest.json
+          echo "=== latest.json assemblé ==="; cat latest.json
+          # Sécurité : ne pas uploader un manifeste vide
+          [ "$(jq '.platforms | length' latest.json)" -gt 0 ] || { echo "Aucune plateforme — abandon"; exit 1; }
+          gh release upload "$TAG" latest.json --repo "$REPO" --clobber
+
   # ── Android ────────────────────────────────────────────────────────────────
   build-android:
     runs-on: ubuntu-22.04
