@@ -51,6 +51,50 @@ use tauri_plugin_updater::UpdaterExt;
 #[cfg(desktop)]
 type Pending = Arc<Mutex<Option<(tauri_plugin_updater::Update, Vec<u8>)>>>;
 
+// ── Préférence « démarrer en arrière-plan » ──────────────────────────────────
+// Persistée dans un petit fichier JSON du dossier de config de l'app, car elle
+// doit être lue côté Rust AU DÉMARRAGE — avant que la webview (et donc son
+// localStorage) ne soit chargée — pour décider d'afficher ou non la fenêtre.
+#[cfg(desktop)]
+fn settings_file(app: &tauri::AppHandle) -> Option<std::path::PathBuf> {
+    app.path()
+        .app_config_dir()
+        .ok()
+        .map(|dir| dir.join("settings.json"))
+}
+
+#[cfg(desktop)]
+fn read_start_minimized(app: &tauri::AppHandle) -> bool {
+    settings_file(app)
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+        .and_then(|v| {
+            v.get("start_minimized")
+                .and_then(serde_json::Value::as_bool)
+        })
+        .unwrap_or(false)
+}
+
+#[cfg(desktop)]
+fn write_start_minimized(app: &tauri::AppHandle, enabled: bool) {
+    let Some(path) = settings_file(app) else {
+        return;
+    };
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    // Fusionne avec l'existant pour ne pas écraser d'éventuelles autres clés.
+    let mut obj = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok())
+        .and_then(|v| v.as_object().cloned())
+        .unwrap_or_default();
+    obj.insert("start_minimized".into(), serde_json::Value::Bool(enabled));
+    if let Ok(s) = serde_json::to_string_pretty(&serde_json::Value::Object(obj)) {
+        let _ = std::fs::write(&path, s);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     #[cfg(target_os = "windows")]
@@ -96,6 +140,47 @@ pub fn run() {
                 let pending: Pending = Arc::new(Mutex::new(None));
                 setup_updater(app, pending);
             }
+
+            // ── Démarrer en arrière-plan ─────────────────────────────────────
+            #[cfg(desktop)]
+            {
+                let handle = app.handle().clone();
+
+                // Au démarrage : on n'affiche la fenêtre que si l'option est
+                // désactivée. Sinon, l'app reste masquée dans le tray (la webview
+                // tourne quand même en fond : temps réel + notifications actifs).
+                // La fenêtre est déclarée `visible: false` dans tauri.conf.json
+                // pour éviter tout clignotement.
+                let start_minimized = read_start_minimized(&handle);
+                if let Some(win) = app.get_webview_window("main") {
+                    if start_minimized {
+                        let _ = win.hide();
+                    } else {
+                        let _ = win.show();
+                    }
+                }
+
+                // JS → Rust : le toggle des Paramètres enregistre la préférence.
+                {
+                    let h = handle.clone();
+                    app.listen("fasttask-set-start-minimized", move |event| {
+                        let enabled =
+                            serde_json::from_str::<bool>(event.payload()).unwrap_or(false);
+                        write_start_minimized(&h, enabled);
+                    });
+                }
+
+                // JS → Rust : à l'ouverture des Paramètres, le front demande
+                // l'état réel pour synchroniser le toggle.
+                {
+                    let h = handle.clone();
+                    app.listen("fasttask-get-start-minimized", move |_| {
+                        let enabled = read_start_minimized(&h);
+                        let _ = h.emit("fasttask-start-minimized-state", enabled);
+                    });
+                }
+            }
+
             Ok(())
         });
 
